@@ -128,11 +128,10 @@ class TwoLayerNet(object):
         dW2 +=reg * W2
         db2 = np.sum(dscores,axis=0)
         dW1 = np.dot(dscores,W2.T)
-        dW1[h1 <= 0] = 0 #dW1 = np.dot((h1>0)*1,dW1.T)
+        dW1[h1 <= 0] = 0 #dW1 = np.dot((h1>0)*1,dW1.T) get 1 in positions where relu outputspositive value, 0 in the rest, then dot product with X
         db1 = np.sum(dW1,axis=0)
         dW1 = np.dot(X.T,dW1)
         dW1 +=reg * W1
-        # get 1 in positions where relu outputspositive value, 0 in the rest, then dot product with X
         
         #print(h1.shape,dh1.shape, X.shape) (5, 10) (10, 5) (5, 4)
         grads['W2'] = dW2
