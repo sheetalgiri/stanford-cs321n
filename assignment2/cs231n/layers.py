@@ -197,8 +197,19 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         #######################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
-
+        
+        mean = np.mean(x,axis=0) #mini batch mean
+        x_minus_mean = (x - mean)
+        x_minus_mean_sqr = np.square(x_minus_mean)
+        variance = np.mean(x_minus_mean_sqr,axis=0)
+        scaler =  np.sqrt(variance + eps)
+        iscaler = 1/scaler # normalize
+        x_avg = iscaler * x_minus_mean
+        gamma_x_avg = gamma* x_avg
+        out = gamma_x_avg + beta #scale and shift        
+        running_mean = momentum * running_mean + (1 - momentum) * mean
+        running_var = momentum * running_var + (1 - momentum) * variance
+        cache = (x,mean,x_minus_mean,x_minus_mean_sqr,variance,scaler,iscaler,x_avg,gamma_x_avg,gamma,beta)
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         #######################################################################
         #                           END OF YOUR CODE                          #
@@ -212,7 +223,8 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         #######################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        out = (x - running_mean)/np.sqrt(running_var + eps) # normalize
+        out = gamma * out + beta #scale and shift
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         #######################################################################
@@ -225,6 +237,7 @@ def batchnorm_forward(x, gamma, beta, bn_param):
     bn_param['running_mean'] = running_mean
     bn_param['running_var'] = running_var
 
+    #create cache
     return out, cache
 
 
@@ -245,7 +258,10 @@ def batchnorm_backward(dout, cache):
     - dgamma: Gradient with respect to scale parameter gamma, of shape (D,)
     - dbeta: Gradient with respect to shift parameter beta, of shape (D,)
     """
-    dx, dgamma, dbeta = None, None, None
+    x,mean,x_minus_mean,x_minus_mean_sqr,variance,scaler,iscaler,x_avg,gamma_x_avg,gamma,beta = cache
+    d_x, d_gamma, d_beta = None, None, None
+    
+    N, D = x.shape
     ###########################################################################
     # TODO: Implement the backward pass for batch normalization. Store the    #
     # results in the dx, dgamma, and dbeta variables.                         #
@@ -254,14 +270,25 @@ def batchnorm_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
-
+    d_gamma_x_avg = dout
+    d_beta = np.sum(dout,axis=0)
+    d_x_avg = d_gamma_x_avg * gamma
+    d_gamma = np.sum(d_gamma_x_avg*x_avg,axis=0)
+    d_iscaler = np.sum(d_x_avg * x_minus_mean,axis=0)
+    d_x_minus_mean = d_x_avg * iscaler
+    d_scalar = (-1./ np.square(scaler))* d_iscaler
+    dvar = 0.5 * iscaler * d_scalar
+    d_x_minus_mean_sqr = (np.ones((N,D))*(1./N)) * dvar
+    d_x_minus_mean += 2*x_minus_mean*d_x_minus_mean_sqr
+    d_mean = -1 * np.sum(d_x_minus_mean,axis=0)
+    d_x =  (np.ones((N,D))*(1./N))*d_mean
+    d_x +=  d_x_minus_mean
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
 
-    return dx, dgamma, dbeta
+    return d_x, d_gamma, d_beta
 
 
 def batchnorm_backward_alt(dout, cache):
